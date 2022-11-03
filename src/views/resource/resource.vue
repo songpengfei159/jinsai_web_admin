@@ -16,7 +16,7 @@
         <el-row>
           <el-col v-for="(resource, index) in resourceSort.resources" :key="resource.uid" :xs="4" :sm="4" :md="4" :lg="2" :xl="2" style="padding: 6px">
             <el-card :body-style="{ padding: '0px', textAlign: 'center' }" shadow="always" >
-              <input :id="resource.uid" :checked="pictureUids.indexOf(resource.uid) >= 0" style="position: absolute; z-index: 100" type="checkbox" @click="checked(resource)" >
+              <input :id="resource.uid" :checked="resourceUids.indexOf(resource.uid) >= 0" style="position: absolute; z-index: 100" type="checkbox" @click="checked(resource)" >
               <el-image :src="filePdf" style="cursor: pointer" fit="scale-down" />
               <div @click="showPicture(resource.pictureUrl)">
                 <span v-if="resource.name" class="media-title">{{
@@ -82,7 +82,7 @@
 
 <script>
 import { getResourceSortList } from '@/api/resourceSort'
-import { getResources, addResource } from '@/api/resources'
+import { getResources, addResource, deleteResource } from '@/api/resources'
 import { getToken } from '@/utils/auth'
 import filePdf from '@/assets/images/file/file_pdf.png'
 import Vue from 'vue'
@@ -99,7 +99,7 @@ export default {
       fileList: [],
       resourceSortUid: undefined, // 当前选中的图片分类uid
       resourceSort: {}, // 当前选中的图片分类
-      pictureUids: [], // 图片uid集合
+      resourceUids: [], // 图片uid集合
       resourcesUploadList: [], // 图片上传列表
       chooseTitle: '全选',
       isCheckedAll: false, // 是否全选
@@ -252,15 +252,6 @@ export default {
         }
       })
     },
-    getFormObject: function() {
-      // var formObject = {
-      //   uid: null,
-      //   fileUid: null,
-      //   picName: null,
-      //   pictureSortUid: null
-      // }
-      // return formObject
-    },
     showPicture: function(url) {
       this.dialogPictureVisible = true
       this.dialogImageUrl = url
@@ -271,76 +262,63 @@ export default {
     },
     // 点击单选
     checked: function(data) {
-      // let idIndex = this.pictureUids.indexOf(data.uid);
-      // if (idIndex >= 0) {
-      //   //选过了
-      //   this.pictureUids.splice(idIndex, 1);
-      // } else {
-      //   this.pictureUids.push(data.uid);
-      // }
-      // console.log("选择列表", this.pictureUids)
+      const idIndex = this.resourceUids.indexOf(data.uid)
+      if (idIndex >= 0) {
+        // 选过了
+        this.resourceUids.splice(idIndex, 1)
+      } else {
+        this.resourceUids.push(data.uid)
+      }
+      console.log('选择列表', this.pictureUids)
     },
     checkAll: function() {
       // // 如果是全选
-      // if (this.isCheckedAll) {
-      //   this.pictureUids = [];
-      //   this.isCheckedAll = false;
-      //   this.chooseTitle = "全选";
-      // } else {
-      //   this.pictureUids = [];
-      //   console.log("tableData", this.tableData)
-      //   this.tableData.forEach(function(picture) {
-      //     this.pictureUids.push(picture.uid);
-      //   }, this);
-      //   this.isCheckedAll = true;
-      //   this.chooseTitle = "取消全选";
-      // }
+      if (this.isCheckedAll) {
+        this.resourceUids = []
+        this.isCheckedAll = false
+        this.chooseTitle = '全选'
+      } else {
+        this.resourceUids = []
+        console.log('tableData', this.tableData)
+        this.tableData.forEach(function(picture) {
+          this.resourceUids.push(picture.uid)
+        }, this)
+        this.isCheckedAll = true
+        this.chooseTitle = '取消全选'
+      }
     },
-    handleDelete: function(picture) {
-      // this.pictureUids = [picture.uid]
-      // this.handleDeleteBatch()
+    handleDelete: function(resource) {
+      this.resourceUids = [resource.uid]
+      this.handleDeleteBatch()
     },
     handleDeleteBatch: function() {
-      // if (this.pictureUids.length <= 0) {
-      //   this.$commonUtil.message.error("请先选中图片！")
-      //   return;
-      // }
-      // this.$confirm("是否删除选中图片？, 是否继续?", "提示", {
-      //   confirmButtonText: "确定",
-      //   cancelButtonText: "取消",
-      //   type: "warning"
-      // })
-      //   .then(() => {
-      //     let params = {};
-      //     params.uid = this.pictureUids.join(","); //将数组变成,组成
-      //     deletePicture(params).then(response => {
-      //       if (response.code == this.$ECode.SUCCESS) {
-      //         this.$commonUtil.message.success(response.message)
-      //         // 清空选中的列表
-      //         this.pictureUids = []
-      //         this.checkedPicture = []
-      //         this.handleCurrentChange(this.currentPage);
-      //         this.chooseTitle = "全选";
-      //         this.isCheckedAll = false;
-      //       }
-      //     });
-      //   })
-      //   .catch(() => {
-      //     this.$commonUtil.message.info("已取消删除")
-      //   });
-    },
-    handleCropper: function(picture) {
-      // this.checkedPicture = picture;
-      // setTimeout(() => {
-      //   this.pictureCropperVisible = true;
-      //   this.reFresh = true;
-      // }, 10)
-    },
-    handleReturn: function() {
-      // this.$router.push({
-      //   path: "pictureSort",
-      //   query: {}
-      // });
+      if (this.resourceUids.length <= 0) {
+        this.$commonUtil.message.error('请先选中文件！')
+        return
+      }
+      this.$confirm('是否删除选中文件？, 是否继续?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      })
+        .then(() => {
+          const params = {}
+          params.uid = this.resourceUids.join(',') // 将数组变成,组成
+          deleteResource(params).then(response => {
+            if (response.code === this.$ECode.SUCCESS) {
+              this.$commonUtil.message.success(response.message)
+              // 清空选中的列表
+              this.resourceUids = []
+              this.checkedPicture = []
+              this.handleCurrentChange(this.currentPage)
+              this.chooseTitle = '全选'
+              this.isCheckedAll = false
+            }
+          })
+        })
+        .catch(() => {
+          this.$commonUtil.message.info('已取消删除')
+        })
     },
     handleAdd: function() {
       this.dialogFormVisible = true
